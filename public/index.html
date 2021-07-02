@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Uploader</title>
+  <style>
+    .aligner {
+      text-align: center;
+    }
+    #drop {
+      height: 300px;
+      line-height: 300px;
+      width: 300px;
+      border-radius: 150px;
+      margin-left: auto;
+      margin-right: auto;
+      background-color: #32a852;
+      color: #fff;
+      text-align: center;
+    }
+    
+    #login {
+      display: flex;
+      justify-content: center;
+      justify-items: center;
+      height: 50px;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="login">
+        <input type="text" placeholder="Enter Username" id="usrnm">
+        <input type="password" placeholder="Enter Password" id="pass">
+        <button onclick="testlogin()">Connect</button>
+  </div>
+  
+    <div id="error" style="display:none;text-align: center;">Wrong username/password</div>
+    <div id="error2" style="display:none;text-align: center;">File must be image (png, jpg, jpeg, gif)</div>
+    <div id="success" style="display:none;text-align: center;">Login successful</div>
+
+  <div class="aligner" id="hidden" style="display:none;">
+    <div id="drop"><h2>Drop images here!</h2></div>
+    <div id="list">
+      <h2>Uploaded Images:</h2>
+    </div>
+    <a href="https://ip6jmlww6a.execute-api.us-east-1.amazonaws.com/Prod">See images gallery</a>
+  </div>
+
+  <script type="text/javascript">
+    let drop = document.getElementById('drop');
+    let list = document.getElementById('list');
+    let basePath = '{{base_path}}'; // filled in by the lambda before serving this page
+    let uploadBaseUrl = basePath + 'api/file/';
+    var isLoggedIn = false;
+
+    // Do nothing on drag events
+    function cancel(e) {
+      e.preventDefault();
+      return false;
+    }
+    
+    function testlogin(){
+      if(document.getElementById('usrnm').value == "admin" && document.getElementById('pass').value == "admin" ){
+        document.getElementById('hidden').style.display = "block";
+        document.getElementById('success').style.display = "block";
+        document.getElementById('error').style.display = "none";
+        document.getElementById('login').style.display = "none";
+        isLoggedIn=true;
+      }
+      else{
+        document.getElementById('error').style.display = "block";
+
+      }
+    }
+
+    // Upload on drop events
+    function handleDrop(e) {
+      if(isLoggedIn)
+      {
+        document.getElementById('error2').style.display = "none";
+        e.preventDefault();
+        let dt    = e.dataTransfer;
+        let files = dt.files;
+        if(files[0].name.includes(".png" || ".jpg" || ".gif" || ".jpeg"))
+        {
+          for (let i = 0; i<files.length; i++) {
+            let file = files[i];
+            let reader = new FileReader();
+            reader.addEventListener('loadend', function(e){
+              fetch(uploadBaseUrl + file.name, {
+                method: "POST",
+                body: new Blob([reader.result], {type: file.type})
+              })
+              .then((response) => {
+                if (response.ok) {
+                  let uploadedFileNode = document.createElement('div');
+                  uploadedFileNode.innerHTML = file.name;
+                  list.appendChild(uploadedFileNode);
+                } else {
+                  alert('Error uploading [' + file.name + ']. Max upload size is ~4MB.');
+                }
+              });
+            });
+            reader.readAsArrayBuffer(file);
+          }
+          return false;
+        }
+        else{
+          document.getElementById('error2').style.display = "block";
+        }
+      }
+    }
+
+    // Listen to events
+    drop.addEventListener('dragenter', cancel);
+    drop.addEventListener('dragover', cancel);
+    drop.addEventListener('drop', handleDrop);
+  </script>
+</body>
+<!-- Based on https://www.netlify.com/blog/2016/11/17/serverless-file-uploads/ -->
+</html>
+
